@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brief · JC</title>
+<style>
+:root {
+  --bg:       #111318;
+  --card:     #1a1d24;
+  --border:   #252932;
+  --gold:     #c9a84c;
+  --gold-dim: rgba(201,168,76,0.12);
+  --text:     #dde2ec;
+  --dim:      #6b7485;
+  --dimmer:   #353c4a;
+  --red:      #d95f5f;
+  --blue:     #5f9fd9;
+  --green:    #5fba8c;
+  --mono:     'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 17px;
+  line-height: 1.7;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 0 60px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ─────────────────── */
+header {
+  padding: 22px 20px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+.brand { font-family: var(--mono); font-size: 12px; color: var(--gold); letter-spacing: .18em; text-transform: uppercase; }
+#hdate { font-family: var(--mono); font-size: 12px; color: var(--dim); letter-spacing: .06em; margin-top: 4px; }
+button#refresh {
+  font-family: var(--mono); font-size: 11px; color: var(--dim);
+  background: var(--card); border: 1px solid var(--border);
+  padding: 8px 16px; border-radius: 5px; cursor: pointer;
+  letter-spacing: .04em; transition: color .15s, border-color .15s;
+}
+button#refresh:hover { color: var(--gold); border-color: var(--gold); }
+
+/* ── Section label ──────────── */
+.sec-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 20px 20px 14px;
+}
+.sec-label {
+  font-family: var(--mono); font-size: 11px; letter-spacing: .2em;
+  text-transform: uppercase; color: var(--gold);
+  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.2);
+  padding: 4px 10px; border-radius: 3px; white-space: nowrap;
+}
+.sec-rule { flex: 1; height: 1px; background: var(--border); }
+
+/* ── Weather ────────────────── */
+.wx-card {
+  margin: 0 20px; background: var(--card);
+  border: 1px solid var(--border); border-radius: 8px; padding: 18px;
+}
+.wx-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.wx-temp { font-family: var(--mono); font-size: 60px; font-weight: 700; line-height: 1; color: var(--text); }
+.wx-temp sup { font-size: 24px; color: var(--dim); font-weight: 400; }
+.wx-cond { text-align: right; }
+.wx-icon { font-size: 32px; line-height: 1; margin-bottom: 4px; }
+.wx-label { font-size: 17px; color: var(--dim); font-style: italic; }
+.wx-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 14px;
+}
+.wx-cell { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 9px 10px; }
+.wx-cell-k { font-family: var(--mono); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--dimmer); margin-bottom: 4px; }
+.wx-cell-v { font-family: var(--mono); font-size: 18px; }
+.hi  { color: #d9825f; }
+.lo  { color: var(--blue); }
+.rain{ color: var(--blue); }
+.wx-rec {
+  background: var(--gold-dim); border: 1px solid rgba(201,168,76,.18);
+  border-radius: 6px; padding: 13px 16px; font-size: 16px; color: var(--text);
+  display: flex; gap: 10px; align-items: flex-start;
+}
+.wx-rec-icon { font-size: 20px; flex-shrink: 0; padding-top: 2px; }
+
+/* ── News ───────────────────── */
+.news-wrap { padding: 0 20px; }
+.story { border-bottom: 1px solid var(--border); padding: 22px 0; }
+.story:last-child { border-bottom: none; }
+.story-title { font-size: 20px; font-weight: bold; line-height: 1.35; color: var(--text); margin-bottom: 10px; font-family: Georgia, serif; }
+.story-brief { font-size: 16px; color: #b8c0d0; line-height: 1.75; margin-bottom: 10px; }
+.story-detail { font-size: 15px; color: var(--dim); line-height: 1.75; margin-bottom: 10px; border-left: 2px solid var(--border); padding-left: 14px; margin-top: 10px; display: none; }
+.story-expand {
+  font-family: var(--mono); font-size: 11px; color: var(--gold);
+  background: none; border: none; cursor: pointer; padding: 0;
+  letter-spacing: .04em; transition: opacity .15s;
+}
+.story-expand:hover { opacity: .7; }
+
+/* ── States ─────────────────── */
+.msg { font-family: var(--mono); font-size: 13px; color: var(--dim); padding: 16px 20px; letter-spacing: .05em; }
+.err { color: var(--red); }
+@keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+.loading { animation: pulse 1.4s ease-in-out infinite; }
+@keyframes fadein { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+.fadein { animation: fadein .3s ease forwards; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="brand">Morning Brief · JC 07306</div>
+    <div id="hdate"></div>
+  </div>
+  <button id="refresh" onclick="load(true)">↺ Refresh</button>
+</header>
+
+<!-- Weather -->
+<div class="sec-head"><span class="sec-label">◎ Weather</span><div class="sec-rule"></div></div>
+<div id="wx"><div class="msg loading">Fetching conditions…</div></div>
+
+<!-- US / Policy -->
+<div class="sec-head"><span class="sec-label">▲ Policy & Power</span><div class="sec-rule"></div></div>
+<div id="us" class="news-wrap"><div class="msg loading">Loading…</div></div>
+
+<!-- Geopolitics -->
+<div class="sec-head"><span class="sec-label">◉ Geopolitics</span><div class="sec-rule"></div></div>
+<div id="world" class="news-wrap"><div class="msg loading">Loading…</div></div>
+
+<!-- Tech -->
+<div class="sec-head"><span class="sec-label">◈ Tech & Innovation</span><div class="sec-rule"></div></div>
+<div id="tech" class="news-wrap"><div class="msg loading">Loading…</div></div>
+
+<script>
+// ── Claude API ───────────────────────────────────────────────────
+const CLAUDE_API_KEY = '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'; // paste your key: https://console.anthropic.com
+const CLAUDE_MODEL   = 'claude-haiku-4-5-20251001';
+
+// ── Config ───────────────────────────────────────────────────────
+const WX_URL =
+  'https://api.open-meteo.com/v1/forecast' +
+  '?latitude=40.7178&longitude=-74.0431' +
+  '&current=temperature_2m,weather_code,wind_speed_10m' +
+  '&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max' +
+  '&temperature_unit=fahrenheit&wind_speed_unit=mph&timezone=America%2FNew_York';
+
+// rss2json: free, no key, CORS-safe, works from file://
+const R2J = 'https://api.rss2json.com/v1/api.json?rss_url=';
+
+const FEEDS = {
+  us:    { url: 'https://api.axios.com/feed/',                             count: 5, label: 'US Policy & Power'   },
+  world: { url: 'https://www.economist.com/international/rss.xml',        count: 5, label: 'Geopolitics'          },
+  tech:  { url: 'https://www.technologyreview.com/feed/',                 count: 4, label: 'Tech & Innovation'    },
+};
+
+// ── WMO codes ────────────────────────────────────────────────────
+const WMO = {
+  0:{l:'Clear',i:'☀️'},1:{l:'Mainly Clear',i:'🌤'},2:{l:'Partly Cloudy',i:'⛅'},
+  3:{l:'Overcast',i:'☁️'},45:{l:'Foggy',i:'🌫'},48:{l:'Icy Fog',i:'🌫'},
+  51:{l:'Light Drizzle',i:'🌦'},53:{l:'Drizzle',i:'🌦'},55:{l:'Heavy Drizzle',i:'🌧'},
+  61:{l:'Light Rain',i:'🌧'},63:{l:'Rain',i:'🌧'},65:{l:'Heavy Rain',i:'🌧'},
+  71:{l:'Light Snow',i:'🌨'},73:{l:'Snow',i:'❄️'},75:{l:'Heavy Snow',i:'❄️'},
+  77:{l:'Snow Grains',i:'🌨'},80:{l:'Showers',i:'🌦'},81:{l:'Showers',i:'🌧'},
+  82:{l:'Violent Showers',i:'⛈'},85:{l:'Snow Showers',i:'🌨'},86:{l:'Heavy Snow Showers',i:'🌨'},
+  95:{l:'Thunderstorm',i:'⛈'},96:{l:'Storm+Hail',i:'⛈'},99:{l:'Severe Storm',i:'⛈'},
+};
+
+// ── Clothing ─────────────────────────────────────────────────────
+function rec(temp, code, wind, precip) {
+  const rain  = [51,53,55,61,63,65,80,81,82,95,96,99].includes(code);
+  const snow  = [71,73,75,77,85,86].includes(code);
+  const storm = [95,96,99].includes(code);
+  const wet   = rain || precip >= 50;
+  const windy = wind > 18;
+
+  if (storm) return { i:'⛈', t:'Thunderstorm likely. Avoid being outside if you can.' };
+  if (snow)  return { i:'🧥', t:'Snow. Heavy coat, waterproof boots, watch for ice.' };
+  if (temp < 30) return { i:'🧥', t:'Dangerously cold. Full layers — coat, hat, gloves, scarf.' };
+  if (temp < 42) return { i:'🧥', t: wet ? 'Cold and wet. Heavy coat + umbrella.' : 'Heavy coat. Layer underneath.' };
+  if (temp < 55) return { i: wet?'☂️':'🧥', t: wet ? 'Jacket and umbrella.' : `Medium jacket.${windy?' Wind will cut through you.':''}` };
+  if (temp < 65) return { i: wet?'☂️':'🧤', t: wet ? 'Light jacket + umbrella.' : `Light jacket or sweater.${windy?' Breezy today.':''}` };
+  if (temp < 75) return { i: wet?'☂️':'👕', t: wet ? 'Warm but rain coming. Pack an umbrella.' : 'T-shirt weather.' };
+  return { i: wet?'☂️':'☀️', t: wet ? 'Hot and rainy. Light clothes, bring umbrella.' : 'Hot day. Stay hydrated.' };
+}
+
+// ── Weather ──────────────────────────────────────────────────────
+async function loadWeather() {
+  const el = document.getElementById('wx');
+  try {
+    const d = await fetch(WX_URL).then(r => { if(!r.ok) throw Error(r.status); return r.json(); });
+    const c = d.current, dy = d.daily;
+    const temp   = Math.round(c.temperature_2m);
+    const code   = c.weather_code;
+    const wind   = Math.round(c.wind_speed_10m);
+    const hi     = Math.round(dy.temperature_2m_max[0]);
+    const lo     = Math.round(dy.temperature_2m_min[0]);
+    const precip = dy.precipitation_probability_max[0] ?? 0;
+    const wmo    = WMO[code] || {l:'Unknown',i:'🌡'};
+    const r      = rec(temp, code, wind, precip);
+
+    el.innerHTML = `
+    <div class="wx-card fadein">
+      <div class="wx-top">
+        <div class="wx-temp">${temp}<sup>°F</sup></div>
+        <div class="wx-cond"><div class="wx-icon">${wmo.i}</div><div class="wx-label">${wmo.l}</div></div>
+      </div>
+      <div class="wx-grid">
+        <div class="wx-cell"><div class="wx-cell-k">High</div><div class="wx-cell-v hi">${hi}°</div></div>
+        <div class="wx-cell"><div class="wx-cell-k">Low</div><div class="wx-cell-v lo">${lo}°</div></div>
+        <div class="wx-cell"><div class="wx-cell-k">Wind</div><div class="wx-cell-v">${wind} mph</div></div>
+        <div class="wx-cell" style="grid-column:span 3"><div class="wx-cell-k">Precip Chance</div><div class="wx-cell-v rain">${precip}%</div></div>
+      </div>
+      <div class="wx-rec"><span class="wx-rec-icon">${r.i}</span><span>${r.t}</span></div>
+    </div>`;
+  } catch(e) {
+    el.innerHTML = `<div class="msg err">⚠ Weather failed: ${e.message}</div>`;
+  }
+}
+
+// ── News ─────────────────────────────────────────────────────────
+function esc(s) {
+  const d = document.createElement('div');
+  d.appendChild(document.createTextNode(s||''));
+  return d.innerHTML;
+}
+
+function strip(html) {
+  const d = document.createElement('div');
+  d.innerHTML = html || '';
+  return d.textContent || '';
+}
+
+// ── Claude synthesis ─────────────────────────────────────────────
+async function synthesize(sectionLabel, items) {
+  const itemsText = items.map((item, i) =>
+    `[${i+1}] ${item.title}\n${item.body ? item.body.slice(0, 1200) : ''}`
+  ).join('\n\n');
+
+  const prompt = `You are writing the morning intelligence brief for a senior executive — think WSJ front page meets The Economist.
+
+Section: ${sectionLabel}
+
+Raw news items from today's feeds:
+${itemsText}
+
+Instructions:
+- Pick the 3–5 most important, exec-relevant stories. Skip fluff, sponsored content, and duplicates.
+- If multiple items cover the same event, merge them into one brief.
+- For each story write TWO levels:
+  1. "brief": 2 sharp sentences — the headline fact and why it matters. This is what the exec reads at a glance.
+  2. "detail": 3–4 more sentences — background, what led here, key players, what to watch next. This is the depth layer for when they want more.
+- Tone: direct, specific, no filler phrases ("it comes as", "amid", "sources say").
+
+Return ONLY a valid JSON array, no markdown, no extra text:
+[{"title":"Specific headline","brief":"2-sentence glance summary.","detail":"3-4 sentences of context and depth."}]`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': CLAUDE_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true',
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL,
+      max_tokens: 1800,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw Error(`Claude: ${err.error?.message || res.status}`);
+  }
+
+  const result = await res.json();
+  const text = result.content[0].text.trim();
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) throw Error('Claude returned unparseable response');
+  return JSON.parse(match[0]);
+}
+
+async function loadFeed(key) {
+  const el   = document.getElementById(key);
+  const feed = FEEDS[key];
+  try {
+    // 1. Fetch raw RSS
+    const url  = R2J + encodeURIComponent(feed.url);
+    const data = await fetch(url).then(r => { if(!r.ok) throw Error(r.status); return r.json(); });
+    if (!data.items || data.items.length === 0) throw Error('No items returned');
+
+    // 2. Prep items — use content field if richer than description (MIT Tech Review)
+    const raw = data.items.slice(0, 10).map(item => ({
+      title: strip(item.title || ''),
+      body:  strip(
+        (item.content && item.content.length > (item.description || '').length)
+          ? item.content : (item.description || '')
+      ).trim(),
+      link: item.link || ''
+    })).filter(item => item.title);
+
+    // 3. Synthesize with Claude if key is set
+    if (CLAUDE_API_KEY && CLAUDE_API_KEY !== 'YOUR_API_KEY_HERE') {
+      const briefs = await synthesize(feed.label, raw);
+      el.innerHTML = briefs.slice(0, feed.count).map((b, i) => `
+        <div class="story fadein" style="animation-delay:${i*.07}s">
+          <div class="story-title">${esc(b.title)}</div>
+          <div class="story-brief">${esc(b.brief)}</div>
+          ${b.detail ? `
+          <div class="story-detail" id="detail-${key}-${i}">${esc(b.detail)}</div>
+          <button class="story-expand" onclick="toggleDetail('${key}-${i}', this)">▼ More context</button>` : ''}
+        </div>`).join('');
+    } else {
+      el.innerHTML = `<div class="msg err">⚠ Add your Claude API key to brief.html to enable AI summaries.</div>`;
+    }
+  } catch(e) {
+    el.innerHTML = `<div class="msg err">⚠ ${esc(e.message)}</div>`;
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────
+function setDate() {
+  document.getElementById('hdate').textContent =
+    new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
+}
+
+async function load(manual = false) {
+  setDate();
+  if (manual) {
+    document.getElementById('wx').innerHTML    = '<div class="msg loading">Fetching conditions…</div>';
+    document.getElementById('us').innerHTML    = '<div class="msg loading">Loading…</div>';
+    document.getElementById('world').innerHTML = '<div class="msg loading">Loading…</div>';
+    document.getElementById('tech').innerHTML  = '<div class="msg loading">Loading…</div>';
+  }
+  // Weather + 3 feeds, all in parallel — rss2json handles CORS, no burst limits
+  await Promise.all([
+    loadWeather(),
+    loadFeed('us'),
+    loadFeed('world'),
+    loadFeed('tech'),
+  ]);
+}
+
+function toggleDetail(id, btn) {
+  const el = document.getElementById('detail-' + id);
+  const open = el.style.display === 'block';
+  el.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? '▼ More context' : '▲ Less';
+}
+
+load();
+</script>
+</body>
+</html>
